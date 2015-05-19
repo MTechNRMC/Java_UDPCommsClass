@@ -149,9 +149,7 @@ public abstract class UDP_Sock implements Runnable {
 				handler(msgPckt);
     		 } 
     		 catch (SocketTimeoutException  e)
-    		 {
-    			 System.out.println("Timed Out");
-    		 }
+    		 {}
     		 catch (IOException e) 
     		 {
 				lastException = e;
