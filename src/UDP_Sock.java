@@ -1,15 +1,14 @@
 import java.io.*;
 import java.net.*;
 
-public abstract class UDP_Sock implements Runnable {
+public class UDP_Sock implements NetworkInterface, Runnable {
 	 private int prt;
      private volatile boolean rx;
+     private String defaultAddr;
      private DatagramSocket sct;
      private Exception lastException;
      private Thread rcvThread;
-     
-
-     public abstract void handler(DatagramPacket pckt);
+     private HandableObject handler;
 
      // getters
      public Exception getLastException()
@@ -17,10 +16,16 @@ public abstract class UDP_Sock implements Runnable {
     	 return lastException;
      }
      
+ 	public void clearError() 
+ 	{
+ 		lastException = null;
+ 	}
+     
      public UDP_Sock(int port)
      {
     	 prt = port;
     	 rx = false;
+    	 defaultAddr = "255.255.255.255";
 
     	 try 
     	 {
@@ -37,6 +42,7 @@ public abstract class UDP_Sock implements Runnable {
      {
     	 prt = port;
     	 rx = false;
+    	 defaultAddr = "255.255.255.255";
     	 
     	 try 
     	 {
@@ -54,6 +60,7 @@ public abstract class UDP_Sock implements Runnable {
     	 // use the passed socket
     	 sct = socket;
     	 rx = false;
+    	 defaultAddr = "255.255.255.255";
     	 prt = socket.getLocalPort();
      }
      public void close()
@@ -61,9 +68,16 @@ public abstract class UDP_Sock implements Runnable {
     	 if(sct != null)
     		 sct.close();
      }
+     
+ 	public boolean connect(String addr) 
+ 	{
+ 		defaultAddr = addr;
+ 		return true;
+ 	}
+ 	
      public boolean send(byte[] msg)
      {
-    	 return send(msg, "255.255.255.255");
+    	 return send(msg, defaultAddr);
      }
      public boolean send(byte[] msg, String ip)
      {
@@ -88,9 +102,10 @@ public abstract class UDP_Sock implements Runnable {
     	 }
     	 return true;
      }
-     public boolean startReceive()
+     public boolean startReceive(HandableObject handler)
      {
     	 rx = true;
+    	 this.handler = handler;
     	 
     	 if(rcvThread == null || !rcvThread.isAlive())
     	 {
@@ -130,14 +145,37 @@ public abstract class UDP_Sock implements Runnable {
     	 }
     	 return true;
      }
+    
+    public byte[] receive()
+    {
+   	 byte[] msg = new byte[1024];
+   	 
+		 try 
+		 {
+			DatagramPacket msgPckt = new DatagramPacket(msg, msg.length, InetAddress.getByName("0.0.0.0"), prt);
+			sct.receive(msgPckt);
+			
+			return msgPckt.getData();
+		 } 
+		 catch (SocketTimeoutException  e)
+		 {
+			 lastException = e;
+		 }
+		 catch (IOException e) 
+		 {
+			lastException = e;
+		 }
+		 
+		 return null;	// no data received or error occurred
+    }
      
      // Runnable methods
      public void run()
      {
-    	 receive();
+    	 receive(handler);
      }
      
-     public void receive()
+     protected void receive(HandableObject handler)
      {
     	 byte[] msg = new byte[1024];
     	 while(rx && sct != null && !sct.isClosed())
@@ -146,7 +184,7 @@ public abstract class UDP_Sock implements Runnable {
     		 {
     			DatagramPacket msgPckt = new DatagramPacket(msg, msg.length, InetAddress.getByName("0.0.0.0"), prt);
 				sct.receive(msgPckt);
-				handler(msgPckt);
+				handler.handler(msgPckt.getAddress(), msgPckt.getData());
     		 } 
     		 catch (SocketTimeoutException  e)
     		 {}

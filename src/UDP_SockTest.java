@@ -1,17 +1,14 @@
-import java.net.DatagramPacket;
+import java.net.InetAddress;
 
 
-public class UDP_SockTest extends UDP_Sock
+public class UDP_SockTest implements HandableObject
 {
-	public UDP_SockTest(int port) {
-		super(port);
-	}
-	public UDP_SockTest(int port, int timeout) {
-		super(port, timeout);
-	}
+	public UDP_SockTest() 
+	{}
 
 	@Override
-	public void handler(DatagramPacket pckt) {
-        System.out.println(pckt.getAddress().getHostAddress() + ": " + new String(pckt.getData()));
+	public void handler(InetAddress addr, byte[] msg) 
+	{
+        System.out.println(addr.getHostAddress() + ": " + new String(msg));
     }
 }
